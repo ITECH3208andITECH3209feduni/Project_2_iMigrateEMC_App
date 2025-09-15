@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { Home, FileText, Calendar, Info } from "lucide-react-native";
+import { Home, FileText, Calendar, Info, Bot, LayoutGrid } from "lucide-react-native";
 import React from "react";
 
 export default function TabLayout() {
@@ -15,6 +15,13 @@ export default function TabLayout() {
         options={{
           title: "Home",
           tabBarIcon: ({ color }) => <Home color={color} />,
+        }}
+      />
+            <Tabs.Screen
+        name="index"
+        options={{
+          title: "Index",
+          tabBarIcon: ({ color }) => <LayoutGrid color={color} />,
         }}
       />
       <Tabs.Screen
@@ -36,6 +43,13 @@ export default function TabLayout() {
         options={{
           title: "About",
           tabBarIcon: ({ color }) => <Info color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="chatbot"
+        options={{
+          title: "Chatbot",
+          tabBarIcon: ({ color }) => <Bot color={color} />,
         }}
       />
     </Tabs>
