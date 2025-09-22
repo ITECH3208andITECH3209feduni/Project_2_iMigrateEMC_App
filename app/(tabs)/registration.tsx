@@ -557,15 +557,21 @@ const styles = StyleSheet.create({
 
   label: { fontSize: 12, color: "#555", marginBottom: 6 },
   input: {
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "#fff",          // clean background
     borderWidth: 1,
-    borderColor: "#e2e2e2",
+    borderColor: "#d9d9d9",           // softer gray
     borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: Platform.select({ ios: 12, android: 10 }),
+    paddingHorizontal: 16,
+    paddingVertical: 16,              // ⬅️ bigger tap area (was ~10–12)
+    fontSize: 16,                     // ⬅️ bigger text
     color: "#333",
+    minHeight: 52,                    // ⬅️ consistent minimum height
   },
-  inputMultiline: { minHeight: 96, textAlignVertical: "top" },
+
+  inputMultiline: {
+    minHeight: 120,
+    textAlignVertical: "top",
+  },
   error: { color: "#C62828", fontSize: 11, marginTop: 6 },
 
   radioRow: { flexDirection: "row", gap: 16 },
