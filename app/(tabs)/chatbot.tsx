@@ -3,13 +3,11 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Keyboard,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
   Image,
@@ -17,9 +15,15 @@ import {
 } from "react-native";
 import { Stack, router } from "expo-router";
 import { ChevronLeft, User, LogOut } from "lucide-react-native";
+import {
+  ROOT_QUESTIONS,
+  getFollowUps,
+  getReplyWithDelay,
+  makeId,
+  type ChatMessage,
+} from "../src/bot/faqBot";
 
-type Sender = "user" | "robot";
-type ChatMessage = { id: string; message: string; sender: Sender };
+type Mode = "root" | "followup";
 
 const COLORS = {
   bg: "#FFFFFF",
@@ -29,85 +33,63 @@ const COLORS = {
   subtext: "#6B7280",
   border: "#E5E7EB",
   primary: "#8C1D40",
-  primaryDark: "#6F1F2F",
+  chipBg: "#F3F4F6",
+  chipBorder: "#E5E7EB",
 };
 
 export default function ChatbotScreen() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(false);
-  const listRef = useRef<FlatList<ChatMessage>>(null);
+  const [mode, setMode] = useState<Mode>("root");
+  const [rootKey, setRootKey] = useState<string | null>(null);
 
+  const listRef = useRef<FlatList<ChatMessage>>(null);
   const scrollToEnd = useCallback(() => {
-    requestAnimationFrame(() => {
-      listRef.current?.scrollToEnd({ animated: true });
-    });
+    requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
   }, []);
 
-  const addMessage = useCallback(
-    (m: ChatMessage | ChatMessage[]) => {
-      setChatMessages((prev) => (Array.isArray(m) ? [...prev, ...m] : [...prev, m]));
-      scrollToEnd();
-    },
-    [scrollToEnd]
-  );
+  const addMessage = useCallback((m: ChatMessage | ChatMessage[]) => {
+    setChatMessages((prev) => (Array.isArray(m) ? [...prev, ...m] : [...prev, m]));
+    scrollToEnd();
+  }, [scrollToEnd]);
 
-  const sendMessage = useCallback(async () => {
-    const trimmed = inputText.trim();
-    if (!trimmed || loading) return;
-
-    const userMsg: ChatMessage = {
-      id: crypto.randomUUID?.() ?? String(Date.now()),
-      message: trimmed,
-      sender: "user",
-    };
-
-    setInputText("");
-    addMessage(userMsg);
-
-    const loadingId = crypto.randomUUID?.() ?? String(Date.now() + 1);
-    const loadingMsg: ChatMessage = {
-      id: loadingId,
-      message: "Loading...",
-      sender: "robot",
-    };
-    addMessage(loadingMsg);
+  const askAndReply = useCallback(async (text: string) => {
+    addMessage({ id: makeId(), message: text, sender: "user" });
+    const tempId = makeId();
+    addMessage({ id: tempId, message: "Typing…", sender: "robot" });
     setLoading(true);
+    const reply = await getReplyWithDelay(text, 350);
+    setChatMessages((prev) => prev.map((m) => (m.id === tempId ? { ...m, message: reply } : m)));
+    setLoading(false);
+    scrollToEnd();
+  }, [addMessage, scrollToEnd]);
 
-    try {
-      const res = await fetch("https://chatbotbackend-l1ro.onrender.com/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userMessage: trimmed }),
-      });
+  const handleRootTap = useCallback((q: string) => {
+    setRootKey(q);
+    setMode("followup");
+    askAndReply(q);
+  }, [askAndReply]);
 
-      const ok = res.ok;
-      const data = ok ? await res.json() : null;
-      const reply =
-        data?.botReply ?? (ok ? "No reply received." : "Error: could not connect to chatbot.");
+  const handleFollowUpTap = useCallback((q: string) => {
+    askAndReply(q);
+  }, [askAndReply]);
 
-      setChatMessages((prev) =>
-        prev.map((m) => (m.id === loadingId ? { ...m, message: reply } : m))
-      );
-    } catch {
-      setChatMessages((prev) =>
-        prev.map((m) =>
-          m.id === loadingId ? { ...m, message: "Error: could not connect to chatbot." } : m
-        )
-      );
-    } finally {
-      setLoading(false);
-      scrollToEnd();
-      Keyboard.dismiss();
-    }
-  }, [inputText, loading, addMessage, scrollToEnd]);
+  const goBackToRoot = useCallback(() => {
+    setMode("root");
+    setRootKey(null);
+  }, []);
+
+  const currentChips = useMemo(() => {
+    if (mode === "root") return ROOT_QUESTIONS;
+    return getFollowUps(rootKey ?? "") || [];
+  }, [mode, rootKey]);
 
   const headerEmptyState = useMemo(
     () =>
       chatMessages.length === 0 ? (
         <View style={styles.welcomeWrap}>
           <Text style={styles.welcomeTitle}>Welcome to iMigrate Chat</Text>
-          <Text style={styles.welcomeSub}>Ask anything about your visa journey.</Text>
+          <Text style={styles.welcomeSub}>Pick a topic below to get started.</Text>
         </View>
       ) : null,
     [chatMessages.length]
@@ -126,11 +108,9 @@ export default function ChatbotScreen() {
 
   return (
     <>
-      {/* Hide Expo header for this screen */}
       <Stack.Screen options={{ headerShown: false }} />
-
       <SafeAreaView style={styles.safe}>
-        {/* Custom Header (matches your other pages) */}
+        {/* Header */}
         <View style={styles.topHeader}>
           <View style={styles.headerInner}>
             <View style={styles.headerLeft}>
@@ -158,7 +138,7 @@ export default function ChatbotScreen() {
           </View>
         </View>
 
-        {/* Content */}
+        {/* Body */}
         <KeyboardAvoidingView
           style={styles.flex}
           behavior={Platform.select({ ios: "padding", android: undefined })}
@@ -166,6 +146,7 @@ export default function ChatbotScreen() {
         >
           <View style={styles.contentArea}>
             <View style={styles.card}>
+              {/* Messages */}
               <FlatList
                 ref={listRef}
                 data={chatMessages}
@@ -176,35 +157,53 @@ export default function ChatbotScreen() {
                 onContentSizeChange={scrollToEnd}
               />
 
-              {/* Input Bar */}
-              <View style={styles.inputBar}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Send a message to Chatbot"
-                  placeholderTextColor="#9CA3AF"
-                  value={inputText}
-                  onChangeText={setInputText}
-                  onSubmitEditing={sendMessage}
-                  returnKeyType="send"
-                  blurOnSubmit={false}
-                />
-                <TouchableOpacity
-                  onPress={sendMessage}
-                  disabled={loading}
-                  activeOpacity={0.9}
-                  style={[styles.sendBtn, loading && { opacity: 0.8 }]}
+              {/* --- Sticky bottom chip bar (inside the card) --- */}
+              <View style={styles.bottomBar}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.chipRow}
                 >
-                  {loading ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.sendText}>Send</Text>
+                  {mode === "followup" && (
+                    <TouchableOpacity
+                      onPress={goBackToRoot}
+                      style={[styles.chip, styles.chipGhost]}
+                      activeOpacity={0.9}
+                      disabled={loading}
+                    >
+                      <Text style={[styles.chipText, styles.chipGhostText]}>Back</Text>
+                    </TouchableOpacity>
                   )}
-                </TouchableOpacity>
+
+                  {currentChips.map((q) => (
+                    <TouchableOpacity
+                      key={q}
+                      onPress={() => (mode === "root" ? handleRootTap(q) : handleFollowUpTap(q))}
+                      style={styles.chip}
+                      activeOpacity={0.9}
+                      disabled={loading}
+                    >
+                      <Text style={styles.chipText}>{q}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+
+                {/* Typing / hint */}
+                <View style={styles.statusRow}>
+                  {loading ? (
+                    <>
+                      <ActivityIndicator />
+                      <Text style={styles.statusText}>Agent is typing…</Text>
+                    </>
+                  ) : (
+                    <Text style={styles.statusHint}>Select a question to continue</Text>
+                  )}
+                </View>
               </View>
             </View>
           </View>
 
-          {/* Footer (simple + consistent with your site’s feel) */}
+          {/* Footer (unchanged) */}
           <View style={styles.footer}>
             <ScrollView
               horizontal
@@ -269,11 +268,6 @@ const styles = StyleSheet.create({
   },
   listContent: { paddingTop: 8, paddingBottom: 12 },
 
-  /* Empty state */
-  welcomeWrap: { alignItems: "center", paddingVertical: 12 },
-  welcomeTitle: { fontSize: 18, fontWeight: "800", color: COLORS.text, marginBottom: 4 },
-  welcomeSub: { fontSize: 14, color: COLORS.subtext },
-
   /* Messages */
   msgRow: { flexDirection: "row", marginBottom: 10, paddingHorizontal: 6 },
   msgRight: { justifyContent: "flex-end" },
@@ -284,34 +278,53 @@ const styles = StyleSheet.create({
   textUser: { color: "#fff", fontSize: 15, lineHeight: 22 },
   textBot: { color: COLORS.text, fontSize: 15, lineHeight: 22 },
 
-  /* Input */
-  inputBar: {
+  /* Sticky bottom chip bar */
+  bottomBar: {
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    paddingTop: 8,
+    paddingBottom: 6,
+    backgroundColor: "#fff",
+  },
+  chipRow: {
+    gap: 8,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+  },
+  chip: {
+    backgroundColor: COLORS.chipBg,
+    borderWidth: 1,
+    borderColor: COLORS.chipBorder,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 999,            // proper pill shape
+    minHeight: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  chipText: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  chipGhost: {
+    backgroundColor: "#fff",
+    borderColor: COLORS.chipBorder,
+  },
+  chipGhostText: {
+    color: COLORS.subtext,
+    fontWeight: "600",
+  },
+
+  statusRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 8,
-    padding: 8,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    gap: 8,
+    paddingHorizontal: 6,
+    paddingTop: 6,
   },
-  input: {
-    flex: 1,
-    paddingHorizontal: 14,
-    paddingVertical: Platform.select({ ios: 12, android: 10 }),
-    fontSize: 15,
-    color: COLORS.text,
-  },
-  sendBtn: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 999,
-    marginLeft: 6,
-    minWidth: 70,
-    alignItems: "center",
-  },
-  sendText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  statusText: { color: COLORS.text, fontSize: 13 },
+  statusHint: { color: COLORS.subtext, fontSize: 13 },
 
   /* Footer */
   footer: {
