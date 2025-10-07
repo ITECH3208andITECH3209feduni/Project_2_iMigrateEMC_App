@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Chat Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+          theme: {
+            extend: {
+              fontFamily: {
+                sans: ['Inter', 'sans-serif'],
+              },
+              colors: {
+                'primary': '#A12143',
+                'primary-light': '#FDF2F5',
+                'secondary': '#1F2937',
+                'muted': '#6B7280',
+                'background': '#FFFFFF',
+                'surface': '#F7F8FA',
+                'border': '#E5E7EB',
+              }
+            }
+          }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar for better aesthetics */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body class="bg-surface font-sans text-secondary">
+    <div class="h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-background border-b border-border p-4 sticky top-0 z-20">
+            <div class="max-w-7xl mx-auto flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                     <a href="/admin.html" class="p-2 border rounded-lg hover:bg-primary-light transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary" aria-label="Go back to dashboard">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                    </a>
+                    <h1 class="text-xl font-bold">Admin Chat</h1>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Main Content -->
+        <main class="flex-grow flex h-full overflow-hidden">
+            <!-- User List Panel -->
+            <aside id="user-list-panel" class="w-1/3 bg-background border-r border-border flex flex-col">
+                <div class="p-4 border-b border-border">
+                    <h2 class="font-bold text-lg">Conversations</h2>
+                </div>
+                <div id="user-list" class="flex-1 overflow-y-auto custom-scrollbar">
+                    <!-- User list will be populated here -->
+                    <div id="user-list-loading" class="p-4 text-center text-muted">Loading users...</div>
+                </div>
+            </aside>
+
+            <!-- Chat Panel -->
+            <section id="chat-panel" class="w-2/3 flex flex-col bg-surface">
+                 <!-- Placeholder when no chat is selected -->
+                <div id="chat-placeholder" class="flex-grow flex flex-col items-center justify-center text-center p-8">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    <h3 class="mt-4 text-xl font-semibold text-secondary">Select a conversation</h3>
+                    <p class="mt-1 text-muted">Choose a user from the list to view and reply to messages.</p>
+                </div>
+                
+                <!-- Chat window (hidden by default) -->
+                <div id="chat-window" class="hidden flex-grow flex flex-col">
+                    <header id="chat-header" class="bg-background p-3 border-b border-border flex items-center">
+                        <!-- User email will be inserted here -->
+                    </header>
+                    <main id="message-list" class="flex-1 p-4 overflow-y-auto custom-scrollbar space-y-4">
+                        <!-- Messages will be rendered here -->
+                    </main>
+                    <footer class="bg-background p-3 border-t border-border">
+                        <form id="message-form" class="flex items-center gap-2">
+                            <input type="text" id="message-input" placeholder="Type your message..." class="w-full p-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary transition-colors focus:bg-primary-light/30" autocomplete="off" />
+                            <button type="submit" class="bg-primary text-white p-2 rounded-lg hover:opacity-90 disabled:bg-primary/50">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg>
+                            </button>
+                        </form>
+                    </footer>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+        // --- SUPABASE CLIENT SETUP ---
+        const supabaseUrl = 'https://rmroajwsqhgkfpecpeon.supabase.co';
+        const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtcm9handzcWhna2ZwZWNwZW9uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1ODU0MDMxNiwiZXhwIjoyMDc0MTE2MzE2fQ.y4ec83u5L1K1iM2qBC_agzGms2-wQZlCaL9r3Ld3Dcs'; // IMPORTANT: Use the service_role key for admin actions
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        
+        // Use anon key for client-side real-time subscriptions
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtcm9handzcWhna2ZwZWNwZW9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NDAzMTYsImV4cCI6MjA3NDExNjMxNn0.lAj4acQN8zFCKZV6UG_xddluT3CzNdvWanlt7n9zFeM';
+        const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+
+
+        // --- UI ELEMENTS ---
+        const userList = document.getElementById('user-list');
+        const userListLoading = document.getElementById('user-list-loading');
+        const chatPlaceholder = document.getElementById('chat-placeholder');
+        const chatWindow = document.getElementById('chat-window');
+        const chatHeader = document.getElementById('chat-header');
+        const messageList = document.getElementById('message-list');
+        const messageForm = document.getElementById('message-form');
+        const messageInput = document.getElementById('message-input');
+
+        // --- APP STATE ---
+        let selectedUserId = null;
+        let chatSubscription = null;
+
+        // --- FUNCTIONS ---
+
+        function renderMessage(msg) {
+            const div = document.createElement('div');
+            div.className = `flex ${msg.sender_is_admin ? 'justify-end' : 'justify-start'}`;
+            div.innerHTML = `
+                <div class="max-w-md px-3 py-2 rounded-lg ${msg.sender_is_admin ? 'bg-primary text-white' : 'bg-white text-secondary border border-border'}">
+                    <p class="text-sm">${msg.content}</p>
+                </div>
+            `;
+            messageList.appendChild(div);
+        }
+
+        function scrollToBottom() {
+            messageList.scrollTop = messageList.scrollHeight;
+        }
+
+        async function selectUser(userId, userEmail) {
+            if (selectedUserId === userId) return;
+
+            selectedUserId = userId;
+
+            // Highlight selected user in the list
+            document.querySelectorAll('#user-list button').forEach(btn => {
+                if (btn.dataset.userId === userId) {
+                    btn.classList.add('bg-primary-light', 'text-primary');
+                    btn.classList.remove('hover:bg-surface');
+                } else {
+                    btn.classList.remove('bg-primary-light', 'text-primary');
+                    btn.classList.add('hover:bg-surface');
+                }
+            });
+
+            chatPlaceholder.classList.add('hidden');
+            chatWindow.classList.remove('hidden');
+            chatWindow.classList.add('flex');
+
+            chatHeader.innerHTML = `<h3 class="font-bold">${userEmail}</h3>`;
+            messageList.innerHTML = '<div class="text-center text-muted">Loading messages...</div>';
+
+            // Fetch messages for this user
+            const { data, error } = await supabase
+                .from('chat_messages')
+                .select('*')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: true });
+
+            messageList.innerHTML = '';
+            if (error) {
+                messageList.innerHTML = '<div class="text-center text-red-500">Error loading messages.</div>';
+                return;
+            }
+            data.forEach(renderMessage);
+            scrollToBottom();
+
+            // Subscribe to real-time updates for this user's chat
+            if (chatSubscription) {
+                supabaseClient.removeChannel(chatSubscription);
+            }
+            chatSubscription = supabaseClient
+                .channel(`chat-admin:${userId}`)
+                .on(
+                    'postgres_changes',
+                    { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `user_id=eq.${userId}` },
+                    (payload) => {
+                        renderMessage(payload.new);
+                        scrollToBottom();
+                    }
+                )
+                .subscribe();
+        }
+
+        async function fetchUsersWithChats() {
+            // This is a bit tricky with RLS. Using the service_role key to get user details.
+            // First, get distinct user_ids from chat_messages.
+            const { data: messagesData, error: messagesError } = await supabase
+                .from('chat_messages')
+                .select('user_id')
+                .order('created_at', { ascending: false });
+            
+            if (messagesError) {
+                userList.innerHTML = '<p class="p-4 text-red-500">Failed to load conversations.</p>';
+                return;
+            }
+
+            const userIds = [...new Set(messagesData.map(m => m.user_id))];
+
+            if (userIds.length === 0) {
+                 userList.innerHTML = '<p class="p-4 text-muted">No conversations started yet.</p>';
+                 userListLoading.classList.add('hidden');
+                 return;
+            }
+
+            // Then, fetch user details for these IDs.
+            const { data: usersData, error: usersError } = await supabase.auth.admin.listUsers({
+                page: 1,
+                perPage: 1000 // Adjust if you have more users
+            });
+           
+            userListLoading.classList.add('hidden');
+            userList.innerHTML = '';
+
+            if (usersError) {
+                userList.innerHTML = '<p class="p-4 text-red-500">Failed to fetch user details.</p>';
+                return;
+            }
+            
+            const usersWithChats = usersData.users.filter(u => userIds.includes(u.id));
+
+            usersWithChats.forEach(user => {
+                const button = document.createElement('button');
+                button.className = "w-full text-left p-3 border-b border-border hover:bg-surface transition-colors";
+                button.dataset.userId = user.id;
+                button.innerHTML = `
+                    <p class="font-semibold text-secondary">${user.email}</p>
+                    <p class="text-xs text-muted">ID: ${user.id.substring(0,8)}...</p>
+                `;
+                button.onclick = () => selectUser(user.id, user.email);
+                userList.appendChild(button);
+            });
+        }
+        
+        messageForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!selectedUserId) return;
+            
+            const content = messageInput.value.trim();
+            if (content === '') return;
+
+            messageInput.value = '';
+            
+            const { error } = await supabase.from('chat_messages').insert({
+                user_id: selectedUserId,
+                content: content,
+                sender_is_admin: true
+            });
+
+            if (error) {
+                // Optionally show an error to the admin
+                console.error("Failed to send message:", error);
+                messageInput.value = content; // Put message back if sending failed
+            }
+        });
+
+        // --- INITIALIZE ---
+        document.addEventListener('DOMContentLoaded', fetchUsersWithChats);
+
+    </script>
+</body>
+</html>

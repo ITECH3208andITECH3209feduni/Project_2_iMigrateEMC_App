@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>iMigrateEMC Visa Consultancy</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+          theme: {
+            extend: {
+              fontFamily: {
+                sans: ['Inter', 'sans-serif'],
+              },
+              colors: {
+                'primary': '#A12143',
+                'primary-light': '#FDF2F5',
+                'secondary': '#1F2937',
+                'muted': '#6B7280',
+                'background': '#FFFFFF',
+                'surface': '#F7F8FA',
+                'border': '#E5E7EB',
+              }
+            }
+          }
+        }
+    </script>
+    <style>
+        /* Custom animations for calendar */
+        @keyframes slide-in-left {
+          from { transform: translateX(-20px); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slide-in-right {
+          from { transform: translateX(20px); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slide-out-left {
+          from { transform: translateX(0); opacity: 1; }
+          to { transform: translateX(-20px); opacity: 0; }
+        }
+        @keyframes slide-out-right {
+          from { transform: translateX(0); opacity: 1; }
+          to { transform: translateX(20px); opacity: 0; }
+        }
+        .animate-slide-in-left { animation: slide-in-left 0.2s ease-out forwards; }
+        .animate-slide-in-right { animation: slide-in-right 0.2s ease-out forwards; }
+        .animate-slide-out-left { animation: slide-out-left 0.2s ease-out forwards; }
+        .animate-slide-out-right { animation: slide-out-right 0.2s ease-out forwards; }
+
+        /* Ensure content doesn't get hidden behind the fixed bottom nav */
+        body {
+            padding-bottom: 70px; /* Adjust based on the height of your nav bar */
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="bg-surface font-sans">
+<div id="root"></div>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
