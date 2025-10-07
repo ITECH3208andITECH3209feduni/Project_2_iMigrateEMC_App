@@ -1,4 +1,5 @@
 # iMigrateEMC Visa Consultancy Web App
+<img width="430" height="932" alt="image" src="https://github.com/user-attachments/assets/13bb16bb-0f99-4668-8f26-76b8d3ba919f" />
 
 iMigrateEMC is a modern, responsive web application designed for a visa and immigration consultancy. It provides a seamless, multi-step appointment booking experience for clients, along with powerful admin dashboards for managing bookings and communicating with users in real-time.
 
